@@ -4,9 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>To-Do Manager</title>
-  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-
 <body>
   <div class="app">
     <header class="top">
@@ -69,12 +68,15 @@
         <div class="cardHead" style="flex-direction:column; align-items:stretch;">
           <h2 class="cardTitle">To-Do List</h2>
 
+          <!-- Toolbar: Search + Sort/Filter dropdown -->
           <div class="tools" style="justify-content:flex-start;">
             <div class="toolGroup" style="width:100%;">
+
               <div class="toolRow">
                 <input id="searchInput" class="input" type="text" placeholder="Search task..." />
 
                 <div class="btnGroup">
+                  <!-- SORT dropdown -->
                   <div class="dropdown">
                     <button id="sortBtn" type="button" class="chipBtn" aria-haspopup="true" aria-expanded="false">
                       <span class="chipIcon">⇅</span>
@@ -89,6 +91,7 @@
                       <button type="button" class="menuItem" data-sort="az">A–Z</button>
                       <button type="button" class="menuItem" data-sort="za">Z–A</button>
 
+                      <!-- hidden select (dipakai JS kamu untuk sorting) -->
                       <select id="sortBy" class="hiddenSelect" aria-hidden="true" tabindex="-1">
                         <option value="newest">Newest</option>
                         <option value="oldest">Oldest</option>
@@ -100,6 +103,7 @@
                     </div>
                   </div>
 
+                  <!-- FILTER dropdown -->
                   <div class="dropdown">
                     <button id="filterBtn" type="button" class="chipBtn" aria-haspopup="true" aria-expanded="false">
                       <span class="chipIcon">≡</span>
@@ -111,6 +115,7 @@
                       <button type="button" class="menuItem" data-filter="pending">Pending</button>
                       <button type="button" class="menuItem" data-filter="completed">Completed</button>
 
+                      <!-- hidden select (dipakai JS kamu untuk filter) -->
                       <select id="statusFilter" class="hiddenSelect" aria-hidden="true" tabindex="-1">
                         <option value="all">All</option>
                         <option value="pending">Pending</option>
@@ -118,8 +123,10 @@
                       </select>
                     </div>
                   </div>
+
                 </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -144,6 +151,23 @@
           </table>
         </div>
 
+        <!-- Confirm Modal (Custom UI) -->
+        <div id="confirmModal" class="modal hidden" aria-hidden="true">
+        <div class="modalOverlay" data-close="true"></div>
+
+        <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+            <h3 id="confirmTitle" class="modalTitle">Konfirmasi</h3>
+            <p id="confirmMessage" class="modalMessage">Yakin?</p>
+
+            <div class="modalActions">
+            <button type="button" id="confirmCancel" class="modalBtn">Cancel</button>
+            <button type="button" id="confirmOk" class="modalBtn modalBtnDanger">OK</button>
+            </div>
+        </div>
+        </div>
+
+
+        <!-- DELETE ALL DI BAWAH -->
         <div style="margin-top:12px; text-align:right;">
           <button class="btn danger" id="deleteAllBtn" type="button">
             Delete All
@@ -157,7 +181,6 @@
     </footer>
   </div>
 
-  <!-- ✅ Script 1x, di bawah -->
-  <script src="./js/app.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
