@@ -1,35 +1,74 @@
 (() => {
   "use strict";
 
+  // ============================================================
+  // SAFE GET ELEMENT (biar gak crash kalau id salah / belum ada)
+  // ============================================================
+  const $ = (id) => document.getElementById(id);
+
   // ===== Elements
-  const form = document.getElementById("todoForm");
-  const todoText = document.getElementById("todoText");
-  const todoDate = document.getElementById("todoDate");
-  const editingId = document.getElementById("editingId");
+  const form = $("todoForm");
+  const todoText = $("todoText");
+  const todoDate = $("todoDate");
+  const editingId = $("editingId");
 
-  const errText = document.getElementById("errText");
-  const errDate = document.getElementById("errDate");
+  const errText = $("errText");
+  const errDate = $("errDate");
 
-  const btnIcon = document.getElementById("btnIcon");
-  const btnLabel = document.getElementById("btnLabel");
+  const btnIcon = $("btnIcon");
+  const btnLabel = $("btnLabel");
 
-  const tbody = document.getElementById("todoTbody");
+  const tbody = $("todoTbody");
 
-  const searchInput = document.getElementById("searchInput");
-  const statusFilter = document.getElementById("statusFilter"); // hidden select
-  const sortBy = document.getElementById("sortBy"); // hidden select
-  const deleteAllBtn = document.getElementById("deleteAllBtn");
+  const searchInput = $("searchInput");
+  const statusFilter = $("statusFilter"); // hidden select
+  const sortBy = $("sortBy"); // hidden select
+  const deleteAllBtn = $("deleteAllBtn");
 
-  const statTotal = document.getElementById("statTotal");
-  const statDone = document.getElementById("statDone");
-  const statPending = document.getElementById("statPending");
-  const progressPercent = document.getElementById("progressPercent");
+  const statTotal = $("statTotal");
+  const statDone = $("statDone");
+  const statPending = $("statPending");
+  const progressPercent = $("progressPercent");
 
   // ===== Dropdown elements
-  const sortBtn = document.getElementById("sortBtn");
-  const filterBtn = document.getElementById("filterBtn");
-  const sortMenu = document.getElementById("sortMenu");
-  const filterMenu = document.getElementById("filterMenu");
+  const sortBtn = $("sortBtn");
+  const filterBtn = $("filterBtn");
+  const sortMenu = $("sortMenu");
+  const filterMenu = $("filterMenu");
+
+  // ============================================================
+  // GUARD: kalau elemen inti tidak ada, stop dengan aman
+  // ============================================================
+  const required = [
+    ["todoForm", form],
+    ["todoText", todoText],
+    ["todoDate", todoDate],
+    ["editingId", editingId],
+    ["errText", errText],
+    ["errDate", errDate],
+    ["btnIcon", btnIcon],
+    ["btnLabel", btnLabel],
+    ["todoTbody", tbody],
+    ["searchInput", searchInput],
+    ["statusFilter", statusFilter],
+    ["sortBy", sortBy],
+    ["deleteAllBtn", deleteAllBtn],
+    ["statTotal", statTotal],
+    ["statDone", statDone],
+    ["statPending", statPending],
+    ["progressPercent", progressPercent],
+    ["sortBtn", sortBtn],
+    ["filterBtn", filterBtn],
+    ["sortMenu", sortMenu],
+    ["filterMenu", filterMenu],
+  ];
+
+  const missing = required.filter(([, el]) => !el).map(([name]) => name);
+  if (missing.length) {
+    // Biar kamu gampang tahu apa yang kurang
+    console.error("Elemen HTML tidak ditemukan:", missing);
+    return;
+  }
 
   // ===== Storage
   const STORAGE_KEY = "todo_manager_v1";
@@ -40,7 +79,9 @@
   // ===== UI state (expand/collapse) (tidak disimpan)
   const expanded = new Set();
 
-  // ===== Date helpers (REAL TIME)
+  // ============================================================
+  // DATE HELPERS (REAL TIME)
+  // ============================================================
   function todayISO() {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -49,22 +90,18 @@
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  let currentDayISO = todayISO(); // dipakai buat deteksi ganti hari
+  let currentDayISO = todayISO();
 
   function enforceMinDateInputs() {
     const t = todayISO();
-    if (todoDate) {
-      todoDate.min = t;
-      if (todoDate.value && todoDate.value < t) {
-        todoDate.value = "";
-        if (errDate) errDate.textContent = "Tanggal tidak boleh sudah lewat.";
-      }
+    todoDate.min = t;
+
+    if (todoDate.value && todoDate.value < t) {
+      todoDate.value = "";
+      errDate.textContent = "Tanggal tidak boleh sudah lewat.";
     }
   }
 
-  // Update real time:
-  // - tiap 1 detik cek apakah hari berubah
-  // - kalau berubah, update min-date & re-render
   function startRealTimeDateGuard() {
     enforceMinDateInputs();
 
@@ -73,7 +110,6 @@
       if (t !== currentDayISO) {
         currentDayISO = t;
         enforceMinDateInputs();
-        // re-render biar tanggal/validasi selalu relevan setelah ganti hari
         render();
       }
     }, 1000);
@@ -81,78 +117,76 @@
 
   startRealTimeDateGuard();
 
-  if (todoDate) {
-    todoDate.addEventListener("input", () => {
-      const t = todayISO();
-      if (todoDate.value && todoDate.value < t) {
-        todoDate.value = "";
-        errDate.textContent = "Tanggal tidak boleh sudah lewat.";
-      } else if (errDate.textContent === "Tanggal tidak boleh sudah lewat.") {
-        errDate.textContent = "";
-      }
-    });
-  }
+  todoDate.addEventListener("input", () => {
+    const t = todayISO();
+    if (todoDate.value && todoDate.value < t) {
+      todoDate.value = "";
+      errDate.textContent = "Tanggal tidak boleh sudah lewat.";
+    } else if (errDate.textContent === "Tanggal tidak boleh sudah lewat.") {
+      errDate.textContent = "";
+    }
+  });
 
-  // ===== Dropdown behavior
+  // ============================================================
+  // DROPDOWN BEHAVIOR (SORT / FILTER)
+  // ============================================================
   function closeMenus() {
-    if (sortMenu) sortMenu.classList.add("hidden");
-    if (filterMenu) filterMenu.classList.add("hidden");
-    if (sortBtn) sortBtn.setAttribute("aria-expanded", "false");
-    if (filterBtn) filterBtn.setAttribute("aria-expanded", "false");
+    sortMenu.classList.add("hidden");
+    filterMenu.classList.add("hidden");
+    sortBtn.setAttribute("aria-expanded", "false");
+    filterBtn.setAttribute("aria-expanded", "false");
   }
 
-  if (sortBtn && sortMenu) {
-    sortBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const willOpen = sortMenu.classList.contains("hidden");
-      closeMenus();
-      if (willOpen) {
-        sortMenu.classList.remove("hidden");
-        sortBtn.setAttribute("aria-expanded", "true");
-      }
-    });
+  sortBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = sortMenu.classList.contains("hidden");
+    closeMenus();
+    if (willOpen) {
+      sortMenu.classList.remove("hidden");
+      sortBtn.setAttribute("aria-expanded", "true");
+    }
+  });
 
-    sortMenu.addEventListener("click", (e) => {
-      const item = e.target.closest("[data-sort]");
-      if (!item) return;
-      const val = item.getAttribute("data-sort");
-      if (!val) return;
+  sortMenu.addEventListener("click", (e) => {
+    const item = e.target.closest("[data-sort]");
+    if (!item) return;
+    const val = item.getAttribute("data-sort");
+    if (!val) return;
 
-      sortBy.value = val;
-      sortBy.dispatchEvent(new Event("change"));
-      closeMenus();
-    });
-  }
+    sortBy.value = val;
+    sortBy.dispatchEvent(new Event("change"));
+    closeMenus();
+  });
 
-  if (filterBtn && filterMenu) {
-    filterBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const willOpen = filterMenu.classList.contains("hidden");
-      closeMenus();
-      if (willOpen) {
-        filterMenu.classList.remove("hidden");
-        filterBtn.setAttribute("aria-expanded", "true");
-      }
-    });
+  filterBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = filterMenu.classList.contains("hidden");
+    closeMenus();
+    if (willOpen) {
+      filterMenu.classList.remove("hidden");
+      filterBtn.setAttribute("aria-expanded", "true");
+    }
+  });
 
-    filterMenu.addEventListener("click", (e) => {
-      const item = e.target.closest("[data-filter]");
-      if (!item) return;
-      const val = item.getAttribute("data-filter");
-      if (!val) return;
+  filterMenu.addEventListener("click", (e) => {
+    const item = e.target.closest("[data-filter]");
+    if (!item) return;
+    const val = item.getAttribute("data-filter");
+    if (!val) return;
 
-      statusFilter.value = val;
-      statusFilter.dispatchEvent(new Event("change"));
-      closeMenus();
-    });
-  }
+    statusFilter.value = val;
+    statusFilter.dispatchEvent(new Event("change"));
+    closeMenus();
+  });
 
   document.addEventListener("click", () => closeMenus());
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMenus();
   });
 
-  // ===== Modal Confirm
+  // ============================================================
+  // MODAL CONFIRM
+  // ============================================================
   function openConfirm(title, message) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -196,7 +230,9 @@
     });
   }
 
-  // ===== Modal input subtask (text + optional date) [REAL TIME min date]
+  // ============================================================
+  // MODAL INPUT SUBTASK (text + optional date)
+  // ============================================================
   function openSubtaskInput(title = "Add Subtask", defaultText = "", defaultDate = "") {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -211,9 +247,7 @@
 
           <div style="margin:10px 0 14px; display:flex; flex-direction:column; gap:10px;">
             <div>
-              <input id="__subText" class="input" type="text" placeholder="Contoh: Beli kabel..." value="${escapeHtml(
-                defaultText
-              )}" />
+              <input id="__subText" class="input" type="text" placeholder="Contoh: Beli kabel..." value="${escapeHtml(defaultText)}" />
               <small id="__subErr" class="error" style="min-height:14px;margin-top:8px"></small>
             </div>
 
@@ -254,7 +288,7 @@
         errEl.textContent = "";
         errDateEl.textContent = "";
 
-        const minNow = todayISO(); // real time check saat submit
+        const minNow = todayISO(); // real time check
 
         if (!text) {
           errEl.textContent = "Wajib diisi.";
@@ -294,16 +328,22 @@
     });
   }
 
-  // ===== Parent/Subtask Sync
+  // ============================================================
+  // SYNC PARENT COMPLETION
+  // ============================================================
   function syncParentCompletion(todo) {
     if (!Array.isArray(todo.subtasks) || todo.subtasks.length === 0) return;
     todo.completed = todo.subtasks.every((s) => s.completed);
   }
 
-  // ===== Init render
+  // ============================================================
+  // INIT RENDER
+  // ============================================================
   render();
 
-  // ===== Events
+  // ============================================================
+  // EVENTS
+  // ============================================================
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
@@ -356,7 +396,9 @@
     render();
   });
 
-  // ===== Functions
+  // ============================================================
+  // FUNCTIONS
+  // ============================================================
   function validateForm(text, date) {
     clearErrors();
     let valid = true;
@@ -403,8 +445,8 @@
     btnLabel.textContent = "Add";
   }
 
-  // ===== Parent toggle (konsisten):
-  // Kalau punya subtasks -> toggle parent akan toggle semua subtasks juga
+  // ===== Parent toggle:
+  // Kalau ada subtasks -> toggle parent akan toggle semua subtasks juga
   function toggleComplete(id) {
     const t = todos.find((x) => x.id === id);
     if (!t) return;
@@ -440,9 +482,7 @@
       createdAt: Date.now(),
     });
 
-    // ada subtask pending -> parent pasti pending
     parent.completed = false;
-
     expanded.add(parentId);
     saveTodos();
     render();
@@ -456,8 +496,6 @@
     if (!s) return;
 
     s.completed = !s.completed;
-
-    // sync parent
     syncParentCompletion(parent);
 
     saveTodos();
@@ -561,10 +599,8 @@
     statDone.textContent = String(done);
     statPending.textContent = String(pending);
 
-    if (progressPercent) {
-      const progress = total === 0 ? 0 : Math.round((done / total) * 100);
-      progressPercent.textContent = String(progress);
-    }
+    const progress = total === 0 ? 0 : Math.round((done / total) * 100);
+    progressPercent.textContent = String(progress);
 
     const list = getFilteredTodos();
 
@@ -710,19 +746,14 @@
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
 
-      return parsed
-        .filter(
-          (x) =>
-            x &&
-            typeof x.id === "string" &&
-            typeof x.text === "string" &&
-            typeof x.dueDate === "string" &&
-            typeof x.completed === "boolean"
-        )
-        .map((x) => ({
-          ...x,
-          subtasks: Array.isArray(x.subtasks) ? x.subtasks : [],
-        }));
+      return parsed.map((x) => ({
+        id: String(x.id || ""),
+        text: String(x.text || ""),
+        dueDate: String(x.dueDate || ""),
+        completed: Boolean(x.completed),
+        createdAt: Number(x.createdAt || Date.now()),
+        subtasks: Array.isArray(x.subtasks) ? x.subtasks : [],
+      })).filter((x) => x.id && x.text && typeof x.dueDate === "string");
     } catch {
       return [];
     }
