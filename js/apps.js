@@ -37,8 +37,8 @@
   /** @type {{id:string, text:string, dueDate:string, completed:boolean, createdAt:number, subtasks?: {id:string,text:string,dueDate?:string,completed:boolean,createdAt:number}[]}[]} */
   let todos = loadTodos();
 
-  // ===== Subtask UI state (expand/collapse)
-  const expanded = new Set(); // tidak disimpan
+  // ===== Subtask UI state (expand/collapse) (tidak disimpan)
+  const expanded = new Set();
 
   // ===== Date helpers
   function todayISO() {
@@ -51,22 +51,26 @@
 
   function enforceMinDate() {
     const t = todayISO();
-    todoDate.min = t;
-    if (todoDate.value && todoDate.value < t) todoDate.value = "";
+    if (todoDate) {
+      todoDate.min = t;
+      if (todoDate.value && todoDate.value < t) todoDate.value = "";
+    }
   }
 
   enforceMinDate();
   setInterval(enforceMinDate, 60 * 1000);
 
-  todoDate.addEventListener("input", () => {
-    const t = todayISO();
-    if (todoDate.value && todoDate.value < t) {
-      todoDate.value = "";
-      errDate.textContent = "Tanggal tidak boleh sudah lewat.";
-    } else if (errDate.textContent === "Tanggal tidak boleh sudah lewat.") {
-      errDate.textContent = "";
-    }
-  });
+  if (todoDate) {
+    todoDate.addEventListener("input", () => {
+      const t = todayISO();
+      if (todoDate.value && todoDate.value < t) {
+        todoDate.value = "";
+        errDate.textContent = "Tanggal tidak boleh sudah lewat.";
+      } else if (errDate.textContent === "Tanggal tidak boleh sudah lewat.") {
+        errDate.textContent = "";
+      }
+    });
+  }
 
   // ===== Dropdown behavior (SORT / FILTER)
   function closeMenus() {
@@ -93,8 +97,10 @@
       const val = item.getAttribute("data-sort");
       if (!val) return;
 
-      sortBy.value = val;
-      sortBy.dispatchEvent(new Event("change"));
+      if (sortBy) {
+        sortBy.value = val;
+        sortBy.dispatchEvent(new Event("change"));
+      }
       closeMenus();
     });
   }
@@ -116,8 +122,10 @@
       const val = item.getAttribute("data-filter");
       if (!val) return;
 
-      statusFilter.value = val;
-      statusFilter.dispatchEvent(new Event("change"));
+      if (statusFilter) {
+        statusFilter.value = val;
+        statusFilter.dispatchEvent(new Event("change"));
+      }
       closeMenus();
     });
   }
@@ -127,7 +135,7 @@
     if (e.key === "Escape") closeMenus();
   });
 
-  // ===== Custom Modal (Confirm + Input)
+  // ===== Custom Modal (Confirm)
   function openConfirm(title, message) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -171,73 +179,7 @@
     });
   }
 
-  function openTextInput(title, placeholder, defaultValue = "") {
-    return new Promise((resolve) => {
-      const modal = document.createElement("div");
-      modal.className = "modal";
-
-      modal.innerHTML = `
-        <div class="modalOverlay" data-close="1"></div>
-        <div class="modalCard" role="dialog" aria-modal="true">
-          <h3 class="modalTitle">${escapeHtml(title)}</h3>
-          <div style="margin:10px 0 14px">
-            <input id="__modalInput" class="input" type="text" placeholder="${escapeHtml(
-              placeholder
-            )}" value="${escapeHtml(defaultValue)}" />
-            <small id="__modalErr" class="error" style="min-height:14px;margin-top:8px"></small>
-          </div>
-          <div class="modalActions">
-            <button class="modalBtn" data-cancel="1" type="button">Cancel</button>
-            <button class="modalBtn modalBtnDanger" data-ok="1" type="button">OK</button>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(modal);
-
-      const input = modal.querySelector("#__modalInput");
-      const err = modal.querySelector("#__modalErr");
-      input?.focus();
-
-      const close = (val) => {
-        modal.remove();
-        resolve(val);
-      };
-
-      const submit = () => {
-        const val = (input?.value || "").trim();
-        if (!val) {
-          err.textContent = "Wajib diisi.";
-          return;
-        }
-        close(val);
-      };
-
-      modal.addEventListener("click", (e) => {
-        if (e.target?.dataset?.close) return close(null);
-        if (e.target?.dataset?.cancel) return close(null);
-        if (e.target?.dataset?.ok) return submit();
-      });
-
-      input?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") submit();
-        if (e.key === "Escape") close(null);
-      });
-
-      document.addEventListener(
-        "keydown",
-        function escOnce(ev) {
-          if (ev.key === "Escape") {
-            document.removeEventListener("keydown", escOnce);
-            close(null);
-          }
-        },
-        { once: true }
-      );
-    });
-  }
-
-  // ===== NEW: modal input subtask (text + date)
+  // ===== Modal input subtask (text + optional date)
   function openSubtaskInput(title = "Add Subtask", defaultText = "", defaultDate = "") {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -335,71 +277,71 @@
     });
   }
 
-  // ===== Parent/Subtask Sync (subtask jalan sendiri)
-  // RULE:
-  // - Subtask toggle -> parent auto completed kalau SEMUA subtask completed
-  // - Kalau ada subtask pending -> parent jadi pending
-    function syncParentCompletion(todo) {
+  // ===== Parent/Subtask Sync
+  function syncParentCompletion(todo) {
     if (!Array.isArray(todo.subtasks) || todo.subtasks.length === 0) return;
     todo.completed = todo.subtasks.every((s) => s.completed);
-}
-
+  }
 
   // ===== Init render
   render();
 
   // ===== Events
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
 
-    const text = todoText.value.trim();
-    const date = todoDate.value;
+      const text = todoText.value.trim();
+      const date = todoDate.value;
 
-    if (!validateForm(text, date)) return;
+      if (!validateForm(text, date)) return;
 
-    const isEditing = Boolean(editingId.value);
+      const isEditing = Boolean(editingId.value);
 
-    if (isEditing) {
-      const id = editingId.value;
-      const idx = todos.findIndex((t) => t.id === id);
-      if (idx !== -1) {
-        todos[idx].text = text;
-        todos[idx].dueDate = date;
+      if (isEditing) {
+        const id = editingId.value;
+        const idx = todos.findIndex((t) => t.id === id);
+        if (idx !== -1) {
+          todos[idx].text = text;
+          todos[idx].dueDate = date;
+        }
+        exitEditMode();
+      } else {
+        const newTodo = {
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+          text,
+          dueDate: date,
+          completed: false,
+          createdAt: Date.now(),
+          subtasks: [],
+        };
+        todos.unshift(newTodo);
       }
+
+      saveTodos();
+      form.reset();
+      clearErrors();
+      enforceMinDate();
+      render();
+    });
+  }
+
+  if (searchInput) searchInput.addEventListener("input", render);
+  if (statusFilter) statusFilter.addEventListener("change", render);
+  if (sortBy) sortBy.addEventListener("change", render);
+
+  if (deleteAllBtn) {
+    deleteAllBtn.addEventListener("click", async () => {
+      if (todos.length === 0) return;
+      const ok = await openConfirm("Konfirmasi", "Yakin mau hapus semua task?");
+      if (!ok) return;
+
+      todos = [];
+      saveTodos();
       exitEditMode();
-    } else {
-      const newTodo = {
-        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
-        text,
-        dueDate: date,
-        completed: false,
-        createdAt: Date.now(),
-        subtasks: [],
-      };
-      todos.unshift(newTodo);
-    }
-
-    saveTodos();
-    form.reset();
-    clearErrors();
-    enforceMinDate();
-    render();
-  });
-
-  searchInput.addEventListener("input", render);
-  statusFilter.addEventListener("change", render);
-  sortBy.addEventListener("change", render);
-
-  deleteAllBtn.addEventListener("click", async () => {
-    if (todos.length === 0) return;
-    const ok = await openConfirm("Konfirmasi", "Yakin mau hapus semua task?");
-    if (!ok) return;
-
-    todos = [];
-    saveTodos();
-    exitEditMode();
-    render();
-  });
+      render();
+    });
+  }
 
   // ===== Functions
   function validateForm(text, date) {
@@ -448,21 +390,27 @@
     btnLabel.textContent = "Add";
   }
 
-  // ===== Parent toggle (TIDAK mengubah subtask)
-    function toggleComplete(id) {
+  // ===== Parent toggle (FIX):
+  // Kalau parent punya subtasks -> toggle parent akan toggle semua subtasks juga
+  function toggleComplete(id) {
     const t = todos.find((x) => x.id === id);
     if (!t) return;
 
-    // boleh toggle manual apakah ada subtask atau tidak
-    t.completed = !t.completed;
+    const next = !t.completed;
+
+    if (Array.isArray(t.subtasks) && t.subtasks.length > 0) {
+      t.subtasks.forEach((s) => (s.completed = next));
+      t.completed = next;
+    } else {
+      t.completed = next;
+    }
 
     saveTodos();
     render();
-}
-
+  }
 
   // ===== Subtasks
-   async function addSubtask(parentId) {
+  async function addSubtask(parentId) {
     const parent = todos.find((x) => x.id === parentId);
     if (!parent) return;
 
@@ -472,21 +420,20 @@
     if (!Array.isArray(parent.subtasks)) parent.subtasks = [];
 
     parent.subtasks.push({
-        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
-        text: result.text,
-        dueDate: result.dueDate || "",
-        completed: false,
-        createdAt: Date.now(),
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      text: result.text,
+      dueDate: result.dueDate || "",
+      completed: false,
+      createdAt: Date.now(),
     });
 
-    // karena ada subtask pending baru, parent pasti pending
+    // ada subtask pending -> parent jadi pending
     parent.completed = false;
 
     expanded.add(parentId);
     saveTodos();
     render();
-}
-
+  }
 
   function toggleSubComplete(parentId, subId) {
     const parent = todos.find((x) => x.id === parentId);
@@ -496,6 +443,9 @@
     if (!s) return;
 
     s.completed = !s.completed;
+
+    // FIX: sync parent based on subtasks
+    syncParentCompletion(parent);
 
     saveTodos();
     render();
@@ -514,6 +464,9 @@
     s.text = result.text;
     s.dueDate = result.dueDate || "";
 
+    // optional sync (aman)
+    syncParentCompletion(parent);
+
     saveTodos();
     render();
   }
@@ -530,7 +483,13 @@
 
     parent.subtasks = parent.subtasks.filter((x) => x.id !== subId);
 
-    if (!parent.subtasks.length) expanded.delete(parentId);
+    if (!parent.subtasks.length) {
+      expanded.delete(parentId);
+      // kalau subtask habis, parent status tidak perlu dipaksa,
+      // biarkan sesuai yang terakhir (atau kamu bisa set false kalau mau).
+    } else {
+      syncParentCompletion(parent);
+    }
 
     saveTodos();
     render();
@@ -552,8 +511,8 @@
   }
 
   function getFilteredTodos() {
-    const q = searchInput.value.trim().toLowerCase();
-    const status = statusFilter.value;
+    const q = (searchInput?.value || "").trim().toLowerCase();
+    const status = statusFilter?.value || "all";
 
     let list = [...todos];
 
@@ -564,7 +523,7 @@
     if (status === "pending") list = list.filter((t) => !t.completed);
     if (status === "completed") list = list.filter((t) => t.completed);
 
-    const sort = sortBy.value;
+    const sort = sortBy?.value || "newest";
     if (sort === "newest") list.sort((a, b) => b.createdAt - a.createdAt);
     if (sort === "oldest") list.sort((a, b) => a.createdAt - b.createdAt);
     if (sort === "duedateAsc") list.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -592,9 +551,9 @@
 
     const pending = total - done;
 
-    statTotal.textContent = String(total);
-    statDone.textContent = String(done);
-    statPending.textContent = String(pending);
+    if (statTotal) statTotal.textContent = String(total);
+    if (statDone) statDone.textContent = String(done);
+    if (statPending) statPending.textContent = String(pending);
 
     if (progressPercent) {
       const progress = total === 0 ? 0 : Math.round((done / total) * 100);
@@ -602,6 +561,8 @@
     }
 
     const list = getFilteredTodos();
+
+    if (!tbody) return;
 
     if (list.length === 0) {
       tbody.innerHTML = `
