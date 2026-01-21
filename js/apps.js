@@ -25,7 +25,7 @@
   const statPending = document.getElementById("statPending");
   const progressPercent = document.getElementById("progressPercent");
 
-  // ===== Dropdown (popover) elements
+  // ===== Dropdown elements
   const sortBtn = document.getElementById("sortBtn");
   const filterBtn = document.getElementById("filterBtn");
   const sortMenu = document.getElementById("sortMenu");
@@ -37,10 +37,10 @@
   /** @type {{id:string, text:string, dueDate:string, completed:boolean, createdAt:number, subtasks?: {id:string,text:string,dueDate?:string,completed:boolean,createdAt:number}[]}[]} */
   let todos = loadTodos();
 
-  // ===== Subtask UI state (expand/collapse) (tidak disimpan)
+  // ===== UI state (expand/collapse) (tidak disimpan)
   const expanded = new Set();
 
-  // ===== Date helpers
+  // ===== Date helpers (REAL TIME)
   function todayISO() {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -49,16 +49,37 @@
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  function enforceMinDate() {
+  let currentDayISO = todayISO(); // dipakai buat deteksi ganti hari
+
+  function enforceMinDateInputs() {
     const t = todayISO();
     if (todoDate) {
       todoDate.min = t;
-      if (todoDate.value && todoDate.value < t) todoDate.value = "";
+      if (todoDate.value && todoDate.value < t) {
+        todoDate.value = "";
+        if (errDate) errDate.textContent = "Tanggal tidak boleh sudah lewat.";
+      }
     }
   }
 
-  enforceMinDate();
-  setInterval(enforceMinDate, 60 * 1000);
+  // Update real time:
+  // - tiap 1 detik cek apakah hari berubah
+  // - kalau berubah, update min-date & re-render
+  function startRealTimeDateGuard() {
+    enforceMinDateInputs();
+
+    setInterval(() => {
+      const t = todayISO();
+      if (t !== currentDayISO) {
+        currentDayISO = t;
+        enforceMinDateInputs();
+        // re-render biar tanggal/validasi selalu relevan setelah ganti hari
+        render();
+      }
+    }, 1000);
+  }
+
+  startRealTimeDateGuard();
 
   if (todoDate) {
     todoDate.addEventListener("input", () => {
@@ -72,7 +93,7 @@
     });
   }
 
-  // ===== Dropdown behavior (SORT / FILTER)
+  // ===== Dropdown behavior
   function closeMenus() {
     if (sortMenu) sortMenu.classList.add("hidden");
     if (filterMenu) filterMenu.classList.add("hidden");
@@ -97,10 +118,8 @@
       const val = item.getAttribute("data-sort");
       if (!val) return;
 
-      if (sortBy) {
-        sortBy.value = val;
-        sortBy.dispatchEvent(new Event("change"));
-      }
+      sortBy.value = val;
+      sortBy.dispatchEvent(new Event("change"));
       closeMenus();
     });
   }
@@ -122,10 +141,8 @@
       const val = item.getAttribute("data-filter");
       if (!val) return;
 
-      if (statusFilter) {
-        statusFilter.value = val;
-        statusFilter.dispatchEvent(new Event("change"));
-      }
+      statusFilter.value = val;
+      statusFilter.dispatchEvent(new Event("change"));
       closeMenus();
     });
   }
@@ -135,7 +152,7 @@
     if (e.key === "Escape") closeMenus();
   });
 
-  // ===== Custom Modal (Confirm)
+  // ===== Modal Confirm
   function openConfirm(title, message) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -179,7 +196,7 @@
     });
   }
 
-  // ===== Modal input subtask (text + optional date)
+  // ===== Modal input subtask (text + optional date) [REAL TIME min date]
   function openSubtaskInput(title = "Add Subtask", defaultText = "", defaultDate = "") {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -204,9 +221,7 @@
               <label style="display:block;font-weight:800;font-size:13px;margin-bottom:6px;color:#111827;">
                 Due Date (opsional)
               </label>
-              <input id="__subDate" class="input" type="date" min="${minDate}" value="${escapeHtml(
-                defaultDate
-              )}" />
+              <input id="__subDate" class="input" type="date" min="${minDate}" value="${escapeHtml(defaultDate)}" />
               <small id="__subErrDate" class="error" style="min-height:14px;margin-top:8px"></small>
             </div>
           </div>
@@ -239,11 +254,13 @@
         errEl.textContent = "";
         errDateEl.textContent = "";
 
+        const minNow = todayISO(); // real time check saat submit
+
         if (!text) {
           errEl.textContent = "Wajib diisi.";
           return;
         }
-        if (dueDate && dueDate < minDate) {
+        if (dueDate && dueDate < minNow) {
           errDateEl.textContent = "Tanggal tidak boleh sudah lewat.";
           return;
         }
@@ -287,61 +304,57 @@
   render();
 
   // ===== Events
-  if (form) {
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
 
-      const text = todoText.value.trim();
-      const date = todoDate.value;
+    const text = todoText.value.trim();
+    const date = todoDate.value;
 
-      if (!validateForm(text, date)) return;
+    if (!validateForm(text, date)) return;
 
-      const isEditing = Boolean(editingId.value);
+    const isEditing = Boolean(editingId.value);
 
-      if (isEditing) {
-        const id = editingId.value;
-        const idx = todos.findIndex((t) => t.id === id);
-        if (idx !== -1) {
-          todos[idx].text = text;
-          todos[idx].dueDate = date;
-        }
-        exitEditMode();
-      } else {
-        const newTodo = {
-          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-          text,
-          dueDate: date,
-          completed: false,
-          createdAt: Date.now(),
-          subtasks: [],
-        };
-        todos.unshift(newTodo);
+    if (isEditing) {
+      const id = editingId.value;
+      const idx = todos.findIndex((t) => t.id === id);
+      if (idx !== -1) {
+        todos[idx].text = text;
+        todos[idx].dueDate = date;
       }
-
-      saveTodos();
-      form.reset();
-      clearErrors();
-      enforceMinDate();
-      render();
-    });
-  }
-
-  if (searchInput) searchInput.addEventListener("input", render);
-  if (statusFilter) statusFilter.addEventListener("change", render);
-  if (sortBy) sortBy.addEventListener("change", render);
-
-  if (deleteAllBtn) {
-    deleteAllBtn.addEventListener("click", async () => {
-      if (todos.length === 0) return;
-      const ok = await openConfirm("Konfirmasi", "Yakin mau hapus semua task?");
-      if (!ok) return;
-
-      todos = [];
-      saveTodos();
       exitEditMode();
-      render();
-    });
-  }
+    } else {
+      const newTodo = {
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        text,
+        dueDate: date,
+        completed: false,
+        createdAt: Date.now(),
+        subtasks: [],
+      };
+      todos.unshift(newTodo);
+    }
+
+    saveTodos();
+    form.reset();
+    clearErrors();
+    enforceMinDateInputs();
+    render();
+  });
+
+  searchInput.addEventListener("input", render);
+  statusFilter.addEventListener("change", render);
+  sortBy.addEventListener("change", render);
+
+  deleteAllBtn.addEventListener("click", async () => {
+    if (todos.length === 0) return;
+    const ok = await openConfirm("Konfirmasi", "Yakin mau hapus semua task?");
+    if (!ok) return;
+
+    todos = [];
+    saveTodos();
+    exitEditMode();
+    render();
+  });
 
   // ===== Functions
   function validateForm(text, date) {
@@ -381,7 +394,7 @@
     btnLabel.textContent = "Update";
     todoText.focus();
 
-    enforceMinDate();
+    enforceMinDateInputs();
   }
 
   function exitEditMode() {
@@ -390,8 +403,8 @@
     btnLabel.textContent = "Add";
   }
 
-  // ===== Parent toggle (FIX):
-  // Kalau parent punya subtasks -> toggle parent akan toggle semua subtasks juga
+  // ===== Parent toggle (konsisten):
+  // Kalau punya subtasks -> toggle parent akan toggle semua subtasks juga
   function toggleComplete(id) {
     const t = todos.find((x) => x.id === id);
     if (!t) return;
@@ -427,7 +440,7 @@
       createdAt: Date.now(),
     });
 
-    // ada subtask pending -> parent jadi pending
+    // ada subtask pending -> parent pasti pending
     parent.completed = false;
 
     expanded.add(parentId);
@@ -444,7 +457,7 @@
 
     s.completed = !s.completed;
 
-    // FIX: sync parent based on subtasks
+    // sync parent
     syncParentCompletion(parent);
 
     saveTodos();
@@ -464,9 +477,7 @@
     s.text = result.text;
     s.dueDate = result.dueDate || "";
 
-    // optional sync (aman)
     syncParentCompletion(parent);
-
     saveTodos();
     render();
   }
@@ -483,13 +494,8 @@
 
     parent.subtasks = parent.subtasks.filter((x) => x.id !== subId);
 
-    if (!parent.subtasks.length) {
-      expanded.delete(parentId);
-      // kalau subtask habis, parent status tidak perlu dipaksa,
-      // biarkan sesuai yang terakhir (atau kamu bisa set false kalau mau).
-    } else {
-      syncParentCompletion(parent);
-    }
+    if (!parent.subtasks.length) expanded.delete(parentId);
+    else syncParentCompletion(parent);
 
     saveTodos();
     render();
@@ -511,8 +517,8 @@
   }
 
   function getFilteredTodos() {
-    const q = (searchInput?.value || "").trim().toLowerCase();
-    const status = statusFilter?.value || "all";
+    const q = searchInput.value.trim().toLowerCase();
+    const status = statusFilter.value;
 
     let list = [...todos];
 
@@ -523,7 +529,7 @@
     if (status === "pending") list = list.filter((t) => !t.completed);
     if (status === "completed") list = list.filter((t) => t.completed);
 
-    const sort = sortBy?.value || "newest";
+    const sort = sortBy.value;
     if (sort === "newest") list.sort((a, b) => b.createdAt - a.createdAt);
     if (sort === "oldest") list.sort((a, b) => a.createdAt - b.createdAt);
     if (sort === "duedateAsc") list.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -551,9 +557,9 @@
 
     const pending = total - done;
 
-    if (statTotal) statTotal.textContent = String(total);
-    if (statDone) statDone.textContent = String(done);
-    if (statPending) statPending.textContent = String(pending);
+    statTotal.textContent = String(total);
+    statDone.textContent = String(done);
+    statPending.textContent = String(pending);
 
     if (progressPercent) {
       const progress = total === 0 ? 0 : Math.round((done / total) * 100);
@@ -561,8 +567,6 @@
     }
 
     const list = getFilteredTodos();
-
-    if (!tbody) return;
 
     if (list.length === 0) {
       tbody.innerHTML = `
