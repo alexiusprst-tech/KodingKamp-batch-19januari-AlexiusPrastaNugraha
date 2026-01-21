@@ -1,6 +1,7 @@
-(() => {
-  "use strict";
-
+document.addEventListener("DOMContentLoaded", () => {
+  (() => {
+    "use strict";
+    
   // ===== Elements
   const form = document.getElementById("todoForm");
   const todoText = document.getElementById("todoText");
