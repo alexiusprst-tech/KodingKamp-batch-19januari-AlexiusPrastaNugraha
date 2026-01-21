@@ -338,7 +338,7 @@ input[type="date"]{
 
 .table{
   width:100%;
-  min-width: 720px; /* ✅ biar tabel nggak hancur di mobile */
+  min-width: 720px; /* ✅ tabel gak hancur di mobile */
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -407,7 +407,7 @@ input[type="date"]{
   cursor:pointer;
   font-weight: 900;
   font-size: 12px;
-  transition: transform .08s ease, filter .12s ease, border-color .12s ease;
+  transition: transform .08s ease, filter .12s ease;
 }
 .actionBtn:hover{ filter: brightness(0.98); }
 .actionBtn:active{ transform: translateY(1px); }
@@ -502,6 +502,7 @@ input[type="date"]{
   background: #fff;
   font-weight: 900;
   cursor:pointer;
+  transition: transform .08s ease, filter .12s ease;
 }
 .modalBtn:hover{ filter: brightness(0.98); }
 .modalBtn:active{ transform: translateY(1px); }
@@ -596,7 +597,4 @@ tr.subRow td{ background: #f1f5f9; }
     margin-top: 6px;
   }
   .menu::before{ display:none; }
-
-  /* tabel: hilangkan min-width agar bisa scroll natural */
-  .table{ min-width: 720px; }
 }
