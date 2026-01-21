@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>To-Do Manager</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div>
+        <h1>To-Do Manager</h1>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="label">Total</span>
+          <span class="value" id="statTotal">0</span>
+        </div>
+
+        <div class="stat">
+          <span class="label">Completed</span>
+          <span class="value" id="statDone">0</span>
+        </div>
+
+        <div class="stat">
+          <span class="label">Pending</span>
+          <span class="value" id="statPending">0</span>
+        </div>
+
+        <div class="stat">
+          <span class="label">Progress</span>
+          <span class="value"><span id="progressPercent">0</span>%</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="panel">
+      <!-- FORM -->
+      <section class="card">
+        <h2 class="cardTitle">Add Task</h2>
+
+        <form id="todoForm" class="form">
+          <div class="field">
+            <label for="todoText">To-Do</label>
+            <input id="todoText" type="text" placeholder="ex: Add a todo ..." />
+            <small class="error" id="errText"></small>
+          </div>
+
+          <div class="field">
+            <label for="todoDate">Due Date</label>
+            <input id="todoDate" type="date" />
+            <small class="error" id="errDate"></small>
+          </div>
+
+          <button class="btn primary" type="submit" id="submitBtn">
+            <span id="btnIcon">＋</span>
+            <span id="btnLabel">Add</span>
+          </button>
+
+          <input type="hidden" id="editingId" value="" />
+        </form>
+      </section>
+
+      <!-- LIST -->
+      <section class="card">
+        <div class="cardHead" style="flex-direction:column; align-items:stretch;">
+          <h2 class="cardTitle">To-Do List</h2>
+
+          <!-- Toolbar: Search + Sort/Filter dropdown -->
+          <div class="tools" style="justify-content:flex-start;">
+            <div class="toolGroup" style="width:100%;">
+
+              <div class="toolRow">
+                <input id="searchInput" class="input" type="text" placeholder="Search task..." />
+
+                <div class="btnGroup">
+                  <!-- SORT dropdown -->
+                  <div class="dropdown">
+                    <button id="sortBtn" type="button" class="chipBtn" aria-haspopup="true" aria-expanded="false">
+                      <span class="chipIcon">⇅</span>
+                      <span>SORT</span>
+                    </button>
+
+                    <div id="sortMenu" class="menu hidden" role="menu" aria-label="Sort menu">
+                      <button type="button" class="menuItem" data-sort="newest">Newest</button>
+                      <button type="button" class="menuItem" data-sort="oldest">Oldest</button>
+                      <button type="button" class="menuItem" data-sort="duedateAsc">Due Date ↑</button>
+                      <button type="button" class="menuItem" data-sort="duedateDesc">Due Date ↓</button>
+                      <button type="button" class="menuItem" data-sort="az">A–Z</button>
+                      <button type="button" class="menuItem" data-sort="za">Z–A</button>
+
+                      <!-- hidden select (dipakai JS kamu untuk sorting) -->
+                      <select id="sortBy" class="hiddenSelect" aria-hidden="true" tabindex="-1">
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="duedateAsc">Due Date ↑</option>
+                        <option value="duedateDesc">Due Date ↓</option>
+                        <option value="az">A–Z</option>
+                        <option value="za">Z–A</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- FILTER dropdown -->
+                  <div class="dropdown">
+                    <button id="filterBtn" type="button" class="chipBtn" aria-haspopup="true" aria-expanded="false">
+                      <span class="chipIcon">≡</span>
+                      <span>FILTER</span>
+                    </button>
+
+                    <div id="filterMenu" class="menu hidden" role="menu" aria-label="Filter menu">
+                      <button type="button" class="menuItem" data-filter="all">All</button>
+                      <button type="button" class="menuItem" data-filter="pending">Pending</button>
+                      <button type="button" class="menuItem" data-filter="completed">Completed</button>
+
+                      <!-- hidden select (dipakai JS kamu untuk filter) -->
+                      <select id="statusFilter" class="hiddenSelect" aria-hidden="true" tabindex="-1">
+                        <option value="all">All</option>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="tableWrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 42px;">#</th>
+                <th>Task</th>
+                <th style="width: 160px;">Due Date</th>
+                <th style="width: 140px;">Status</th>
+                <th style="width: 210px;">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody id="todoTbody">
+              <tr class="emptyRow">
+                <td colspan="5">No task found</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Confirm Modal (Custom UI) -->
+        <div id="confirmModal" class="modal hidden" aria-hidden="true">
+        <div class="modalOverlay" data-close="true"></div>
+
+        <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+            <h3 id="confirmTitle" class="modalTitle">Konfirmasi</h3>
+            <p id="confirmMessage" class="modalMessage">Yakin?</p>
+
+            <div class="modalActions">
+            <button type="button" id="confirmCancel" class="modalBtn">Cancel</button>
+            <button type="button" id="confirmOk" class="modalBtn modalBtnDanger">OK</button>
+            </div>
+        </div>
+        </div>
+
+
+        <!-- DELETE ALL DI BAWAH -->
+        <div style="margin-top:12px; text-align:right;">
+          <button class="btn danger" id="deleteAllBtn" type="button">
+            Delete All
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>LocalStorage: ON (data tersimpan di browser)</span>
+    </footer>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
