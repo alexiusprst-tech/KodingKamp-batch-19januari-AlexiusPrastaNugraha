@@ -1,10 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>To-Do Manager</title>
-  <link rel="stylesheet" href="./css/style.css">
+
+  <link rel="stylesheet" href="./css/style.css" />
+  <!-- ✅ Defer: JS jalan setelah HTML siap -->
   <script defer src="./js/app.js"></script>
 </head>
 
@@ -39,11 +41,11 @@
     </header>
 
     <main class="panel">
-      <!-- FORM -->
+      <!-- ===== FORM ===== -->
       <section class="card">
         <h2 class="cardTitle">Add Task</h2>
 
-        <form id="todoForm" class="form">
+        <form id="todoForm" class="form" autocomplete="off">
           <div class="field">
             <label for="todoText">To-Do</label>
             <input id="todoText" type="text" placeholder="ex: Add a todo ..." />
@@ -65,11 +67,12 @@
         </form>
       </section>
 
-      <!-- LIST -->
+      <!-- ===== LIST ===== -->
       <section class="card">
         <div class="cardHead" style="flex-direction:column; align-items:stretch;">
           <h2 class="cardTitle">To-Do List</h2>
 
+          <!-- Toolbar: Search + Sort/Filter dropdown -->
           <div class="tools" style="justify-content:flex-start;">
             <div class="toolGroup" style="width:100%;">
               <div class="toolRow">
@@ -162,8 +165,5 @@
       <span>LocalStorage: ON (data tersimpan di browser)</span>
     </footer>
   </div>
-
-  <!-- ✅ Script hanya 1x dan diletakkan di bawah -->
-  <script src="./js/app.js"></script>
 </body>
 </html>
