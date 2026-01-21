@@ -1,10 +1,40 @@
 (() => {
   "use strict";
 
-  // ============================================================
-  // SAFE GET ELEMENT (biar gak crash kalau id salah / belum ada)
-  // ============================================================
-  const $ = (id) => document.getElementById(id);
+  // ===== Helpers
+  function $(id) {
+    const el = document.getElementById(id);
+    return el || null;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function makeId() {
+    return (window.crypto && typeof window.crypto.randomUUID === "function")
+      ? window.crypto.randomUUID()
+      : String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+  }
+
+  function todayISO() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function formatDate(yyyyMmDd) {
+    const [y, m, d] = (yyyyMmDd || "").split("-");
+    if (!y || !m || !d) return yyyyMmDd || "";
+    return `${d}/${m}/${y}`;
+  }
 
   // ===== Elements
   const form = $("todoForm");
@@ -21,8 +51,8 @@
   const tbody = $("todoTbody");
 
   const searchInput = $("searchInput");
-  const statusFilter = $("statusFilter"); // hidden select
-  const sortBy = $("sortBy"); // hidden select
+  const statusFilter = $("statusFilter");
+  const sortBy = $("sortBy");
   const deleteAllBtn = $("deleteAllBtn");
 
   const statTotal = $("statTotal");
@@ -30,67 +60,28 @@
   const statPending = $("statPending");
   const progressPercent = $("progressPercent");
 
-  // ===== Dropdown elements
   const sortBtn = $("sortBtn");
   const filterBtn = $("filterBtn");
   const sortMenu = $("sortMenu");
   const filterMenu = $("filterMenu");
 
-  // ============================================================
-  // GUARD: kalau elemen inti tidak ada, stop dengan aman
-  // ============================================================
-  const required = [
-    ["todoForm", form],
-    ["todoText", todoText],
-    ["todoDate", todoDate],
-    ["editingId", editingId],
-    ["errText", errText],
-    ["errDate", errDate],
-    ["btnIcon", btnIcon],
-    ["btnLabel", btnLabel],
-    ["todoTbody", tbody],
-    ["searchInput", searchInput],
-    ["statusFilter", statusFilter],
-    ["sortBy", sortBy],
-    ["deleteAllBtn", deleteAllBtn],
-    ["statTotal", statTotal],
-    ["statDone", statDone],
-    ["statPending", statPending],
-    ["progressPercent", progressPercent],
-    ["sortBtn", sortBtn],
-    ["filterBtn", filterBtn],
-    ["sortMenu", sortMenu],
-    ["filterMenu", filterMenu],
-  ];
-
-  const missing = required.filter(([, el]) => !el).map(([name]) => name);
-  if (missing.length) {
-    // Biar kamu gampang tahu apa yang kurang
-    console.error("Elemen HTML tidak ditemukan:", missing);
+  // Guard: kalau elemen inti tidak ada, stop biar tidak error
+  if (!form || !todoText || !todoDate || !editingId || !tbody || !searchInput || !statusFilter || !sortBy || !deleteAllBtn) {
+    console.error("Elemen HTML belum lengkap / id tidak cocok. Cek index.html kamu.");
     return;
   }
 
   // ===== Storage
   const STORAGE_KEY = "todo_manager_v1";
 
-  /** @type {{id:string, text:string, dueDate:string, completed:boolean, createdAt:number, subtasks?: {id:string,text:string,dueDate?:string,completed:boolean,createdAt:number}[]}[]} */
+  /** @type {{id:string, text:string, dueDate:string, completed:boolean, createdAt:number, subtasks:{id:string,text:string,dueDate?:string,completed:boolean,createdAt:number}[]}[]} */
   let todos = loadTodos();
 
-  // ===== UI state (expand/collapse) (tidak disimpan)
+  // ===== UI state (expand/collapse)
   const expanded = new Set();
 
-  // ============================================================
-  // DATE HELPERS (REAL TIME)
-  // ============================================================
-  function todayISO() {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  let currentDayISO = todayISO();
+  // ===== Real-time date min guard (update kalau hari berubah)
+  let currentDay = todayISO();
 
   function enforceMinDateInputs() {
     const t = todayISO();
@@ -98,95 +89,91 @@
 
     if (todoDate.value && todoDate.value < t) {
       todoDate.value = "";
-      errDate.textContent = "Tanggal tidak boleh sudah lewat.";
+      if (errDate) errDate.textContent = "Tanggal tidak boleh sudah lewat.";
     }
   }
 
-  function startRealTimeDateGuard() {
-    enforceMinDateInputs();
+  enforceMinDateInputs();
 
-    setInterval(() => {
-      const t = todayISO();
-      if (t !== currentDayISO) {
-        currentDayISO = t;
-        enforceMinDateInputs();
-        render();
-      }
-    }, 1000);
-  }
-
-  startRealTimeDateGuard();
+  setInterval(() => {
+    const t = todayISO();
+    if (t !== currentDay) {
+      currentDay = t;
+      enforceMinDateInputs();
+      render();
+    }
+  }, 1000);
 
   todoDate.addEventListener("input", () => {
     const t = todayISO();
     if (todoDate.value && todoDate.value < t) {
       todoDate.value = "";
-      errDate.textContent = "Tanggal tidak boleh sudah lewat.";
-    } else if (errDate.textContent === "Tanggal tidak boleh sudah lewat.") {
+      if (errDate) errDate.textContent = "Tanggal tidak boleh sudah lewat.";
+    } else if (errDate && errDate.textContent === "Tanggal tidak boleh sudah lewat.") {
       errDate.textContent = "";
     }
   });
 
-  // ============================================================
-  // DROPDOWN BEHAVIOR (SORT / FILTER)
-  // ============================================================
+  // ===== Dropdown behavior
   function closeMenus() {
-    sortMenu.classList.add("hidden");
-    filterMenu.classList.add("hidden");
-    sortBtn.setAttribute("aria-expanded", "false");
-    filterBtn.setAttribute("aria-expanded", "false");
+    if (sortMenu) sortMenu.classList.add("hidden");
+    if (filterMenu) filterMenu.classList.add("hidden");
+    if (sortBtn) sortBtn.setAttribute("aria-expanded", "false");
+    if (filterBtn) filterBtn.setAttribute("aria-expanded", "false");
   }
 
-  sortBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const willOpen = sortMenu.classList.contains("hidden");
-    closeMenus();
-    if (willOpen) {
-      sortMenu.classList.remove("hidden");
-      sortBtn.setAttribute("aria-expanded", "true");
-    }
-  });
+  if (sortBtn && sortMenu) {
+    sortBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const willOpen = sortMenu.classList.contains("hidden");
+      closeMenus();
+      if (willOpen) {
+        sortMenu.classList.remove("hidden");
+        sortBtn.setAttribute("aria-expanded", "true");
+      }
+    });
 
-  sortMenu.addEventListener("click", (e) => {
-    const item = e.target.closest("[data-sort]");
-    if (!item) return;
-    const val = item.getAttribute("data-sort");
-    if (!val) return;
+    sortMenu.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-sort]");
+      if (!item) return;
+      const val = item.getAttribute("data-sort");
+      if (!val) return;
 
-    sortBy.value = val;
-    sortBy.dispatchEvent(new Event("change"));
-    closeMenus();
-  });
+      sortBy.value = val;
+      sortBy.dispatchEvent(new Event("change"));
+      closeMenus();
+    });
+  }
 
-  filterBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const willOpen = filterMenu.classList.contains("hidden");
-    closeMenus();
-    if (willOpen) {
-      filterMenu.classList.remove("hidden");
-      filterBtn.setAttribute("aria-expanded", "true");
-    }
-  });
+  if (filterBtn && filterMenu) {
+    filterBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const willOpen = filterMenu.classList.contains("hidden");
+      closeMenus();
+      if (willOpen) {
+        filterMenu.classList.remove("hidden");
+        filterBtn.setAttribute("aria-expanded", "true");
+      }
+    });
 
-  filterMenu.addEventListener("click", (e) => {
-    const item = e.target.closest("[data-filter]");
-    if (!item) return;
-    const val = item.getAttribute("data-filter");
-    if (!val) return;
+    filterMenu.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-filter]");
+      if (!item) return;
+      const val = item.getAttribute("data-filter");
+      if (!val) return;
 
-    statusFilter.value = val;
-    statusFilter.dispatchEvent(new Event("change"));
-    closeMenus();
-  });
+      statusFilter.value = val;
+      statusFilter.dispatchEvent(new Event("change"));
+      closeMenus();
+    });
+  }
 
   document.addEventListener("click", () => closeMenus());
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMenus();
   });
 
-  // ============================================================
-  // MODAL CONFIRM
-  // ============================================================
+  // ===== Modal Confirm
   function openConfirm(title, message) {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -230,9 +217,7 @@
     });
   }
 
-  // ============================================================
-  // MODAL INPUT SUBTASK (text + optional date)
-  // ============================================================
+  // ===== Modal input subtask (text + optional date)
   function openSubtaskInput(title = "Add Subtask", defaultText = "", defaultDate = "") {
     return new Promise((resolve) => {
       const modal = document.createElement("div");
@@ -284,11 +269,10 @@
       const submit = () => {
         const text = (textEl?.value || "").trim();
         const dueDate = (dateEl?.value || "").trim();
+        const minNow = todayISO();
 
         errEl.textContent = "";
         errDateEl.textContent = "";
-
-        const minNow = todayISO(); // real time check
 
         if (!text) {
           errEl.textContent = "Wajib diisi.";
@@ -328,22 +312,13 @@
     });
   }
 
-  // ============================================================
-  // SYNC PARENT COMPLETION
-  // ============================================================
+  // ===== Parent/Subtask Sync
   function syncParentCompletion(todo) {
     if (!Array.isArray(todo.subtasks) || todo.subtasks.length === 0) return;
     todo.completed = todo.subtasks.every((s) => s.completed);
   }
 
-  // ============================================================
-  // INIT RENDER
-  // ============================================================
-  render();
-
-  // ============================================================
-  // EVENTS
-  // ============================================================
+  // ===== Events
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
@@ -363,15 +338,14 @@
       }
       exitEditMode();
     } else {
-      const newTodo = {
-        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      todos.unshift({
+        id: makeId(),
         text,
         dueDate: date,
         completed: false,
         createdAt: Date.now(),
         subtasks: [],
-      };
-      todos.unshift(newTodo);
+      });
     }
 
     saveTodos();
@@ -396,25 +370,23 @@
     render();
   });
 
-  // ============================================================
-  // FUNCTIONS
-  // ============================================================
+  // ===== Form helpers
   function validateForm(text, date) {
     clearErrors();
     let valid = true;
 
     if (!text) {
-      errText.textContent = "Wajib diisi.";
+      if (errText) errText.textContent = "Wajib diisi.";
       valid = false;
     }
 
     if (!date) {
-      errDate.textContent = "Due Date wajib diisi.";
+      if (errDate) errDate.textContent = "Due Date wajib diisi.";
       valid = false;
     } else {
       const t = todayISO();
       if (date < t) {
-        errDate.textContent = "Tanggal tidak boleh sudah lewat.";
+        if (errDate) errDate.textContent = "Tanggal tidak boleh sudah lewat.";
         valid = false;
       }
     }
@@ -423,8 +395,8 @@
   }
 
   function clearErrors() {
-    errText.textContent = "";
-    errDate.textContent = "";
+    if (errText) errText.textContent = "";
+    if (errDate) errDate.textContent = "";
   }
 
   function enterEditMode(todo) {
@@ -432,8 +404,8 @@
     todoText.value = todo.text;
     todoDate.value = todo.dueDate;
 
-    btnIcon.textContent = "✎";
-    btnLabel.textContent = "Update";
+    if (btnIcon) btnIcon.textContent = "✎";
+    if (btnLabel) btnLabel.textContent = "Update";
     todoText.focus();
 
     enforceMinDateInputs();
@@ -441,12 +413,11 @@
 
   function exitEditMode() {
     editingId.value = "";
-    btnIcon.textContent = "＋";
-    btnLabel.textContent = "Add";
+    if (btnIcon) btnIcon.textContent = "＋";
+    if (btnLabel) btnLabel.textContent = "Add";
   }
 
-  // ===== Parent toggle:
-  // Kalau ada subtasks -> toggle parent akan toggle semua subtasks juga
+  // ===== Parent complete toggle
   function toggleComplete(id) {
     const t = todos.find((x) => x.id === id);
     if (!t) return;
@@ -475,7 +446,7 @@
     if (!Array.isArray(parent.subtasks)) parent.subtasks = [];
 
     parent.subtasks.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      id: makeId(),
       text: result.text,
       dueDate: result.dueDate || "",
       completed: false,
@@ -484,6 +455,7 @@
 
     parent.completed = false;
     expanded.add(parentId);
+
     saveTodos();
     render();
   }
@@ -514,8 +486,8 @@
 
     s.text = result.text;
     s.dueDate = result.dueDate || "";
-
     syncParentCompletion(parent);
+
     saveTodos();
     render();
   }
@@ -561,7 +533,7 @@
     let list = [...todos];
 
     if (q) {
-      list = list.filter((t) => t.text.toLowerCase().includes(q) || t.dueDate.includes(q));
+      list = list.filter((t) => t.text.toLowerCase().includes(q) || (t.dueDate || "").includes(q));
     }
 
     if (status === "pending") list = list.filter((t) => !t.completed);
@@ -578,8 +550,9 @@
     return list;
   }
 
+  // ===== Render
   function render() {
-    // stats: hitung parent + subtasks
+    // stats: parent + subtasks
     let total = 0;
     let done = 0;
 
@@ -595,14 +568,18 @@
 
     const pending = total - done;
 
-    statTotal.textContent = String(total);
-    statDone.textContent = String(done);
-    statPending.textContent = String(pending);
+    if (statTotal) statTotal.textContent = String(total);
+    if (statDone) statDone.textContent = String(done);
+    if (statPending) statPending.textContent = String(pending);
 
-    const progress = total === 0 ? 0 : Math.round((done / total) * 100);
-    progressPercent.textContent = String(progress);
+    if (progressPercent) {
+      const progress = total === 0 ? 0 : Math.round((done / total) * 100);
+      progressPercent.textContent = String(progress);
+    }
 
     const list = getFilteredTodos();
+
+    if (!tbody) return;
 
     if (list.length === 0) {
       tbody.innerHTML = `
@@ -678,14 +655,14 @@
         });
       }
 
-      btnSub.addEventListener("click", () => addSubtask(t.id));
-      btnComplete.addEventListener("click", () => toggleComplete(t.id));
-      btnEdit.addEventListener("click", () => enterEditMode(t));
-      btnDelete.addEventListener("click", () => deleteOne(t.id));
+      btnSub?.addEventListener("click", () => addSubtask(t.id));
+      btnComplete?.addEventListener("click", () => toggleComplete(t.id));
+      btnEdit?.addEventListener("click", () => enterEditMode(t));
+      btnDelete?.addEventListener("click", () => deleteOne(t.id));
 
       tbody.appendChild(tr);
 
-      // subtasks (kalau open)
+      // subtasks
       if (hasSubs && expanded.has(t.id)) {
         t.subtasks.forEach((s) => {
           const subTr = document.createElement("tr");
@@ -714,9 +691,9 @@
           `;
 
           const [bComplete, bEdit, bDelete] = subTr.querySelectorAll("button");
-          bComplete.addEventListener("click", () => toggleSubComplete(t.id, s.id));
-          bEdit.addEventListener("click", () => editSubtask(t.id, s.id));
-          bDelete.addEventListener("click", () => deleteSubtask(t.id, s.id));
+          bComplete?.addEventListener("click", () => toggleSubComplete(t.id, s.id));
+          bEdit?.addEventListener("click", () => editSubtask(t.id, s.id));
+          bDelete?.addEventListener("click", () => deleteSubtask(t.id, s.id));
 
           tbody.appendChild(subTr);
         });
@@ -724,21 +701,7 @@
     });
   }
 
-  function formatDate(yyyyMmDd) {
-    const [y, m, d] = (yyyyMmDd || "").split("-");
-    if (!y || !m || !d) return yyyyMmDd || "";
-    return `${d}/${m}/${y}`;
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
+  // ===== Storage
   function loadTodos() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -746,14 +709,19 @@
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
 
-      return parsed.map((x) => ({
-        id: String(x.id || ""),
-        text: String(x.text || ""),
-        dueDate: String(x.dueDate || ""),
-        completed: Boolean(x.completed),
-        createdAt: Number(x.createdAt || Date.now()),
-        subtasks: Array.isArray(x.subtasks) ? x.subtasks : [],
-      })).filter((x) => x.id && x.text && typeof x.dueDate === "string");
+      return parsed
+        .filter(
+          (x) =>
+            x &&
+            typeof x.id === "string" &&
+            typeof x.text === "string" &&
+            typeof x.dueDate === "string" &&
+            typeof x.completed === "boolean"
+        )
+        .map((x) => ({
+          ...x,
+          subtasks: Array.isArray(x.subtasks) ? x.subtasks : [],
+        }));
     } catch {
       return [];
     }
@@ -762,4 +730,7 @@
   function saveTodos() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
   }
+
+  // ===== Init
+  render();
 })();
