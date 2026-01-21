@@ -52,7 +52,7 @@ body{
   background: rgba(255,255,255,.12);
   border: 1px solid rgba(255,255,255,.18);
   border-radius: var(--radius);
-  padding: 18px 18px;
+  padding: 18px;
   color:#fff;
   box-shadow: var(--shadow2);
   backdrop-filter: blur(8px);
@@ -97,9 +97,8 @@ body{
   display:grid;
   grid-template-columns: 360px 1fr;
   gap: 16px;
-  align-items: start; 
+  align-items: start;
 }
-
 
 /* ===== Card ===== */
 .card{
@@ -145,6 +144,12 @@ body{
   background:#fff;
 }
 
+/* biar input date lebih rapi di beberapa browser */
+input[type="date"]{
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 .field input:focus,
 .field select:focus,
 .input:focus{
@@ -177,6 +182,7 @@ body{
   gap:10px;
   transition: transform .08s ease, filter .12s ease;
 }
+.btn:hover{ filter: brightness(0.98); }
 .btn:active{ transform: translateY(1px); }
 
 .btn.primary{
@@ -259,10 +265,8 @@ body{
   line-height:1;
 }
 
-/* ===== Dropdown Popover (FINAL) ===== */
-.dropdown{
-  position: relative;
-}
+/* ===== Dropdown Popover ===== */
+.dropdown{ position: relative; }
 
 .menu{
   position: absolute;
@@ -278,7 +282,6 @@ body{
   z-index: 50;
 }
 
-/* arrow kecil */
 .menu::before{
   content:"";
   position:absolute;
@@ -292,7 +295,7 @@ body{
   transform: rotate(45deg);
 }
 
-/* FILTER menu align kanan (biar gak kepotong) */
+/* FILTER menu align kanan */
 #filterMenu{
   left: auto;
   right: 0;
@@ -313,11 +316,8 @@ body{
   color: #0f172a;
   cursor: pointer;
 }
-.menuItem:hover{
-  background: #f1f5f9;
-}
+.menuItem:hover{ background: #f1f5f9; }
 
-/* select tetap ada buat JS, tapi disembunyiin */
 .hiddenSelect{
   position:absolute;
   left:-9999px;
@@ -326,20 +326,19 @@ body{
   opacity:0;
 }
 
-.hidden{
-  display:none !important;
-}
+.hidden{ display:none !important; }
 
 /* ===== Table ===== */
 .tableWrap{
   margin-top: 10px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  overflow:hidden;
+  overflow:auto; /* ✅ biar bisa scroll di layar kecil */
 }
 
 .table{
   width:100%;
+  min-width: 720px; /* ✅ biar tabel nggak hancur di mobile */
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -376,6 +375,7 @@ body{
   font-weight: 900;
   font-size: 12px;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 .badge.pending{
@@ -394,7 +394,7 @@ body{
 .actions{
   display:flex;
   gap:8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* ✅ biar gak kepotong */
   align-items: center;
 }
 
@@ -407,7 +407,10 @@ body{
   cursor:pointer;
   font-weight: 900;
   font-size: 12px;
+  transition: transform .08s ease, filter .12s ease, border-color .12s ease;
 }
+.actionBtn:hover{ filter: brightness(0.98); }
+.actionBtn:active{ transform: translateY(1px); }
 
 .actionBtn.complete{
   background: #eef2ff;
@@ -425,6 +428,14 @@ body{
   color: var(--dangerText);
 }
 
+/* Add Subtask button */
+.actionBtn.subtask{
+  background: #dae8b0;
+  border-color: #eddf1d;
+  color: #232711;
+}
+.actionBtn.subtask:hover{ filter: brightness(0.97); }
+
 /* ===== Footer ===== */
 .foot{
   margin-top: 14px;
@@ -433,47 +444,16 @@ body{
   text-align:center;
 }
 
-/* ===== Responsive ===== */
-@media (max-width: 980px){
-  .panel{ grid-template-columns: 1fr; }
-
-  .toolRow{
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .btnGroup{
-    width:100%;
-    justify-content: flex-start;
-  }
-  .chipBtn{
-    width: 100%;
-    justify-content: center;
-  }
-
-  /* dropdown mobile: jadi block biar gak kepotong */
-  .menu{
-    position: static;
-    width: 100%;
-    max-width: none;
-    margin-top: 6px;
-  }
-  .menu::before{
-    display:none;
-  }
-}
-
-/* ===== Confirm Modal (Custom UI) ===== */
-/* ===== Confirm Modal (CENTERED) ===== */
+/* ===== Modal (Custom UI) ===== */
 .modal.hidden{ display:none !important; }
 
 .modal{
   position: fixed;
   inset: 0;
   z-index: 9999;
-
   display: flex;
-  align-items: center;      /* tengah vertikal */
-  justify-content: center;  /* tengah horizontal */
+  align-items: center;
+  justify-content: center;
 }
 
 .modalOverlay{
@@ -494,44 +474,6 @@ body{
   z-index: 2;
 }
 
-/* text */
-.modalTitle{
-  margin: 0 0 6px 0;
-  font-size: 16px;
-  font-weight: 900;
-  color: #0f172a;
-}
-
-.modalMessage{
-  margin: 0 0 14px 0;
-  color: #334155;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-/* buttons */
-.modalActions{
-  display:flex;
-  justify-content:flex-end;
-  gap:10px;
-}
-
-.modalBtn{
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(15,23,42,.18);
-  background: #fff;
-  font-weight: 900;
-  cursor:pointer;
-}
-
-.modalBtnDanger{
-  background: var(--dangerBg);
-  border-color: rgba(255,59,59,.35);
-  color: var(--dangerText);
-}
-
 .modalTitle{
   margin: 0 0 6px 0;
   font-size: 16px;
@@ -561,6 +503,8 @@ body{
   font-weight: 900;
   cursor:pointer;
 }
+.modalBtn:hover{ filter: brightness(0.98); }
+.modalBtn:active{ transform: translateY(1px); }
 
 .modalBtnDanger{
   background: var(--dangerBg);
@@ -568,18 +512,7 @@ body{
   color: var(--dangerText);
 }
 
-/* ===== Add Subtask button + tooltip ===== */
-.actionBtn.subtask{
-  background: #dae8b0;      /* kuning */
-  border-color: #eddf1d;    /* kuning lebih gelap */
-  color: #232711;          /* teks hitam */
-}
-
-.actionBtn.subtask:hover{
-  filter: brightness(0.97);
-}
-
-/* tooltip hitam seperti gambar */
+/* ===== Tooltip (optional) ===== */
 .hasTip{ position: relative; }
 .hasTip::after{
   content: attr(data-tip);
@@ -613,14 +546,11 @@ body{
   z-index: 99;
 }
 .hasTip:hover::after,
-.hasTip:hover::before{
-  opacity:1;
-}
+.hasTip:hover::before{ opacity:1; }
 
 /* ===== Subtask rows ===== */
-tr.subRow td{
-  background: #f1f5f9;
-}
+tr.subRow td{ background: #f1f5f9; }
+
 .subTaskText{
   padding-left: 22px;
   font-weight: 800;
@@ -636,4 +566,37 @@ tr.subRow td{
   border-radius:999px;
   background:#64748b;
   display:inline-block;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 980px){
+  .panel{ grid-template-columns: 1fr; }
+
+  .toolRow{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btnGroup{
+    width:100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .chipBtn{
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* dropdown mobile: jadi block biar gak kepotong */
+  .menu{
+    position: static;
+    width: 100%;
+    max-width: none;
+    margin-top: 6px;
+  }
+  .menu::before{ display:none; }
+
+  /* tabel: hilangkan min-width agar bisa scroll natural */
+  .table{ min-width: 720px; }
 }
