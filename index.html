@@ -1,101 +1,120 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>To-Do Manager</title>
-  <link rel="stylesheet" href="css/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo Manager</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-
-    <header>
-      <h1>To-Do Manager</h1>
-
-      <div class="stats-container">
-        <div class="stat-card">
-          <div class="stat-label">Total</div>
-          <div class="stat-value" id="statTotal">0</div>
+  <div class="app">
+    <!-- ===== Header ===== -->
+    <div class="top">
+      <h1>Todo Manager</h1>
+      <div class="stats">
+        <div class="stat">
+          <span class="label">Total</span>
+          <span class="value" id="statTotal">0</span>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Completed</div>
-          <div class="stat-value" id="statDone">0</div>
+        <div class="stat">
+          <span class="label">Done</span>
+          <span class="value" id="statDone">0</span>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Pending</div>
-          <div class="stat-value" id="statPending">0</div>
+        <div class="stat">
+          <span class="label">Pending</span>
+          <span class="value" id="statPending">0</span>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Progress</div>
-          <div class="stat-value"><span id="progressPercent">0</span>%</div>
-        </div>
-      </div>
-
-      <div class="progress-bar-container">
-        <div id="progressBar" class="progress-bar"></div>
-      </div>
-    </header>
-
-    <main>
-      <!-- FORM -->
-      <section class="input-section">
-        <div class="input-group">
-          <input type="text" id="taskInput" placeholder="Add a task..." />
-        </div>
-        <div class="input-group">
-          <input type="date" id="dateInput" />
-        </div>
-        <button id="addBtn" class="add-btn">＋</button>
-      </section>
-      <div id="errorMessage" class="error-message"></div>
-
-      <!-- LIST -->
-      <section class="table-container">
-        <div class="controls-section">
-          <input type="text" id="searchInput" class="search-input" placeholder="Search task..." />
-          <button id="filterBtn" class="control-btn">Filter</button>
-          <div id="filterDropdown" class="filter-dropdown hidden">
-            <button class="filter-option" data-filter="all">All</button>
-            <button class="filter-option" data-filter="pending">Pending</button>
-            <button class="filter-option" data-filter="completed">Completed</button>
-          </div>
-          <button id="sortBtn" class="control-btn">Sort A-Z</button>
-          <button id="deleteAllBtn" class="delete-all-btn">Delete All</button>
-        </div>
-
-        <table class="tasks-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Task</th>
-              <th>Due Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tasksTableBody">
-            <tr class="empty-state">
-              <td colspan="5">No tasks yet</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-    </main>
-
-    <!-- Confirm Modal -->
-    <div id="confirmModal" class="modal hidden">
-      <div class="modal-backdrop"></div>
-      <div class="modal-box">
-        <h3>Confirm Delete?</h3>
-        <div class="modal-actions">
-          <button id="confirmDeleteBtn" class="btn-danger">Yes</button>
-          <button id="cancelDeleteBtn" class="btn-secondary">Cancel</button>
+        <div class="stat">
+          <span class="label">Progress %</span>
+          <span class="value" id="progressPercent">0</span>
         </div>
       </div>
     </div>
 
+    <!-- ===== Form ===== -->
+    <div class="panel">
+      <div class="card">
+        <h3 class="cardTitle">Add / Edit Todo</h3>
+        <form class="form" id="todoForm">
+          <input type="hidden" id="editingId">
+          <div class="field">
+            <label for="todoText">Task</label>
+            <input type="text" id="todoText" placeholder="Task name">
+            <small class="error" id="errText"></small>
+          </div>
+          <div class="field">
+            <label for="todoDate">Due Date</label>
+            <input type="date" id="todoDate">
+            <small class="error" id="errDate"></small>
+          </div>
+          <button type="submit" class="btn primary">
+            <span id="btnIcon">＋</span>
+            <span id="btnLabel">Add</span>
+          </button>
+        </form>
+
+        <div style="margin-top:10px;">
+          <input type="text" id="searchInput" class="input" placeholder="Search tasks...">
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <button class="btn" id="sortBtn" aria-expanded="false">Sort</button>
+          <button class="btn" id="filterBtn" aria-expanded="false">Filter</button>
+          <button class="btn danger" id="deleteAllBtn">Delete All</button>
+        </div>
+
+        <!-- Hidden selects for JS -->
+        <select id="statusFilter" class="hidden">
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+        </select>
+        <select id="sortBy" class="hidden">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="duedateAsc">Due Date ↑</option>
+          <option value="duedateDesc">Due Date ↓</option>
+          <option value="az">A-Z</option>
+          <option value="za">Z-A</option>
+        </select>
+      </div>
+
+      <!-- ===== Table ===== -->
+      <div class="card" style="flex:1;">
+        <h3 class="cardTitle">Tasks</h3>
+        <div class="tableWrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Task</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="todoTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script src="js/app.js"></script>
+  <!-- Dropdown Menus -->
+  <div id="sortMenu" class="menu hidden">
+    <button data-sort="newest">Newest</button>
+    <button data-sort="oldest">Oldest</button>
+    <button data-sort="duedateAsc">Due Date ↑</button>
+    <button data-sort="duedateDesc">Due Date ↓</button>
+    <button data-sort="az">A-Z</button>
+    <button data-sort="za">Z-A</button>
+  </div>
+  <div id="filterMenu" class="menu hidden">
+    <button data-filter="all">All</button>
+    <button data-filter="pending">Pending</button>
+    <button data-filter="completed">Completed</button>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
